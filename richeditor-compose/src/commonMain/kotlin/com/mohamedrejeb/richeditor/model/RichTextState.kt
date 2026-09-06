@@ -33,6 +33,7 @@ import androidx.compose.ui.util.fastForEach
 import androidx.compose.ui.util.fastForEachIndexed
 import androidx.compose.ui.util.fastForEachReversed
 import com.mohamedrejeb.richeditor.annotation.ExperimentalRichTextApi
+import com.mohamedrejeb.richeditor.clipboard.RichTextClipboardContent
 import com.mohamedrejeb.richeditor.document.RichTextDocument
 import com.mohamedrejeb.richeditor.document.RichTextDocumentDecoder
 import com.mohamedrejeb.richeditor.document.RichTextDocumentEncoder
@@ -184,6 +185,28 @@ public class RichTextState internal constructor(
             if (!lastNonCollapsedSelection.collapsed) return lastNonCollapsedSelection
             return null
         }
+
+    private var pendingCutClipboardContent: RichTextClipboardContent? = null
+
+    /** Resolve clipboard content against the document before a cut, or a still-valid copy range. */
+    internal fun takeClipboardContent(editorText: String): RichTextClipboardContent? {
+        val cutContent = pendingCutClipboardContent
+        pendingCutClipboardContent = null
+        if (cutContent?.editorText == editorText) return cutContent
+
+        val range = copySelection ?: return null
+        if (range.max > textFieldValue.text.length ||
+            textFieldValue.text.substring(range.min, range.max) != editorText
+        ) return null
+        return clipboardContent(range)
+    }
+
+    @OptIn(ExperimentalRichTextApi::class)
+    private fun clipboardContent(range: TextRange) = RichTextClipboardContent(
+        editorText = textFieldValue.text.substring(range.min, range.max),
+        text = toText(range),
+        html = if (config.richClipboardEnabled) toHtml(range) else null,
+    )
 
     /**
      * Whether the text field is currently focused.
@@ -2085,6 +2108,19 @@ public class RichTextState internal constructor(
         // IMEs and plain clipboard entries can contain CRLF or CR. Normalize before
         // diffing/splitting so history, quote continuation, and caret offsets agree.
         val newTextFieldValue = newTextFieldValue.normalizeLineEndings()
+        // Compose's cut action deletes the selection before calling setClipEntry. Keep
+        // the selected content, not just its offsets into the now-mutated document.
+        // Match the later clipboard write against the original editor text so an ordinary
+        // deletion cannot substitute unrelated clipboard content.
+        val oldSelection = textFieldValue.selection
+        pendingCutClipboardContent = if (
+            !oldSelection.collapsed && newTextFieldValue.selection.collapsed &&
+            newTextFieldValue.text == textFieldValue.text.removeRange(oldSelection.min, oldSelection.max)
+        ) {
+            clipboardContent(oldSelection)
+        } else {
+            null
+        }
         // Classify the change for history before any mutation happens.
         // With rich clipboard disabled, stashed HTML is ignored and the pasted text flows
         // through the normal insertion path, inheriting styles at the caret like typed text.

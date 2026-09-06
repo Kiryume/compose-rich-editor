@@ -68,38 +68,31 @@ internal class AndroidRichTextClipboardManager(
     }
 
     override suspend fun setClipEntry(clipEntry: ClipEntry?) {
-        if (!richTextState.config.richClipboardEnabled) {
-            val copySelection = richTextState.copySelection
-            if (clipEntry == null || copySelection == null || copySelection.collapsed) {
-                clipboard.setClipEntry(clipEntry)
-                return
-            }
-            // The raw ClipEntry carries the editor's internal rendering (paragraphs joined
-            // by spaces, list prefixes included); a plain-text copy must use toText.
-            val text = richTextState.toText(copySelection)
-            clipboard.setClipEntry(ClipEntry(ClipData.newPlainText("text", text)))
-            return
-        }
-
         if (clipEntry == null) {
             clipboard.setClipEntry(null)
             return
         }
 
-        try {
-            val copySelection = richTextState.copySelection
-
-            if (copySelection == null || copySelection.collapsed) {
-                clipboard.setClipEntry(null)
-                return
+        val convertedEntry = try {
+            val clipData = clipEntry.clipData
+            val editorText = if (clipData.itemCount == 1) clipData.getItemAt(0).text?.toString() else null
+            val content = editorText?.let(richTextState::takeClipboardContent)
+            if (content == null) {
+                clipEntry
+            } else {
+                // Internal editor text uses spaces between paragraphs and includes list
+                // prefixes; both copy and cut must export the actual plain text instead.
+                val newClipData = if (richTextState.config.richClipboardEnabled && content.html != null) {
+                    ClipData.newHtmlText("rich text", content.text, content.html)
+                } else {
+                    ClipData.newPlainText("text", content.text)
+                }
+                ClipEntry(newClipData)
             }
-
-            val html = richTextState.toHtml(copySelection)
-            val text = richTextState.toText(copySelection)
-            val newClipData = ClipData.newHtmlText("rich text", text, html)
-            clipboard.setClipEntry(ClipEntry(newClipData))
         } catch (e: Exception) {
             e.printStackTrace()
+            clipEntry
         }
+        clipboard.setClipEntry(convertedEntry)
     }
 }
