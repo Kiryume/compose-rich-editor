@@ -19,6 +19,7 @@ internal fun RichParagraph.deepCopy(): RichParagraph {
         type = copiedType,
         isFromLineBreak = isFromLineBreak,
         headingStyle = headingStyle,
+        quoteDepth = quoteDepth,
     )
     children.forEach { child ->
         new.children.add(child.deepCopyInto(newParagraph = new, newParent = null))

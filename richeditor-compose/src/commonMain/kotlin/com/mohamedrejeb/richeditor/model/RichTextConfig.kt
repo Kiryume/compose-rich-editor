@@ -13,6 +13,12 @@ import com.mohamedrejeb.richeditor.paragraph.type.UnorderedListStyleType
 public class RichTextConfig internal constructor(
     private val updateText: () -> Unit,
 ) {
+    public var blockquoteColor: Color = Color.Gray
+        set(value) { field = value; updateText() }
+
+    public var blockquoteBackgroundColor: Color = Color.Transparent
+        set(value) { field = value; updateText() }
+
     public var linkColor: Color = Color.Blue
         set(value) {
             field = value

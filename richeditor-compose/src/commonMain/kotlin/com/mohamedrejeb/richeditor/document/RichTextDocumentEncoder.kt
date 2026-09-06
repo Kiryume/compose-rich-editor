@@ -98,6 +98,7 @@ internal object RichTextDocumentEncoder {
             // for non-list paragraphs (mirror RichTextStateHtmlParser.decode).
             textIndent = style.textIndent.takeIf { type is RichTextBlockType.Paragraph },
             isLineBreak = paragraph.isFromLineBreak,
+            quoteDepth = paragraph.quoteDepth,
         )
     }
 

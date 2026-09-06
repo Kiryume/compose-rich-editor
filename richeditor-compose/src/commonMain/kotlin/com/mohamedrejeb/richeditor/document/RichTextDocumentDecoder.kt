@@ -39,6 +39,7 @@ internal object RichTextDocumentDecoder {
             textIndent = block.textIndent,
         )
         paragraph.isFromLineBreak = block.isLineBreak
+        paragraph.quoteDepth = block.quoteDepth
         val type = block.type
         if (type is RichTextBlockType.ListItem) {
             // Constructed like RichTextStateHtmlParser does for <li>; the real number is

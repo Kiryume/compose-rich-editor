@@ -31,6 +31,7 @@ internal class RichParagraph(
      */
     var isFromLineBreak: Boolean = false,
     headingStyle: HeadingStyle = HeadingStyle.Normal,
+    var quoteDepth: Int = 0,
 ) {
 
     /**
@@ -409,11 +410,25 @@ internal class RichParagraph(
         }
     }
 
+    // Quote indentation is visual; it must not become user-authored paragraph CSS.
+    fun editorStyle(config: com.mohamedrejeb.richeditor.model.RichTextConfig): ParagraphStyle {
+        val style = paragraphStyle.merge(type.getStyle(config))
+        if (quoteDepth == 0) return style
+        val indent = style.textIndent ?: androidx.compose.ui.text.style.TextIndent.None
+        val quoteIndent = androidx.compose.ui.unit.TextUnit(16f * quoteDepth, androidx.compose.ui.unit.TextUnitType.Sp)
+        return style.copy(textIndent = androidx.compose.ui.text.style.TextIndent(
+            firstLine = androidx.compose.ui.unit.TextUnit(indent.firstLine.value + quoteIndent.value, androidx.compose.ui.unit.TextUnitType.Sp),
+            restLine = androidx.compose.ui.unit.TextUnit(indent.restLine.value + quoteIndent.value, androidx.compose.ui.unit.TextUnitType.Sp),
+        ))
+    }
+
     fun copy(): RichParagraph {
         val newParagraph = RichParagraph(
             paragraphStyle = paragraphStyle.copy(),
             type = type.copy(),
             headingStyle = headingStyle,
+            quoteDepth = quoteDepth,
+            isFromLineBreak = isFromLineBreak,
         )
         children.fastForEach { childRichSpan ->
             val newRichSpan = childRichSpan.copy(newParagraph)

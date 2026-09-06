@@ -494,6 +494,7 @@ public class RichTextState internal constructor(
      */
     public val selectedLinkUrl: String? get() = (currentAppliedRichSpanStyle as? RichSpanStyle.Link)?.url
 
+
     @Deprecated(
         message = "Use isCodeSpan instead",
         replaceWith = ReplaceWith("isCodeSpan"),
@@ -585,6 +586,10 @@ public class RichTextState internal constructor(
         private set
     public var isOrderedList: Boolean by mutableStateOf(currentRichParagraphType is OrderedList)
         private set
+    /** Whether every selected paragraph is quoted. Independent of headings and lists. */
+    public var isBlockquote: Boolean by mutableStateOf(false)
+        private set
+
     public var isList: Boolean by mutableStateOf(isUnorderedList || isOrderedList)
         private set
     public var canIncreaseListLevel: Boolean by mutableStateOf(false)
@@ -1017,6 +1022,14 @@ public class RichTextState internal constructor(
      * otherwise the specified heading style replaces any previous one. Wrapped in
      * [recordHistory] so undo/redo restores heading changes alongside other formatting.
      */
+    public fun toggleBlockquote(): Unit = recordHistory(CommitTrigger.Structural) {
+        val paragraphs = getRichParagraphListByTextRange(selection)
+        val depth = if (paragraphs.all { it.quoteDepth > 0 }) 0 else 1
+        paragraphs.forEach { it.quoteDepth = depth }
+        updateAnnotatedString()
+        updateCurrentParagraphStyle()
+    }
+
     public fun setHeadingStyle(headingStyle: HeadingStyle): Unit =
         recordHistory(CommitTrigger.Formatting) {
             val paragraphs = getRichParagraphListByTextRange(selection)
@@ -2746,7 +2759,7 @@ public class RichTextState internal constructor(
                     return@fastForEachIndexed
                 }
 
-                withStyle(richParagraph.paragraphStyle.merge(richParagraph.type.getStyle(config))) {
+                withStyle(richParagraph.editorStyle(config)) {
                     withStyle(richParagraph.getListMarkerSpanStyle(config.listMarkerStyleBehavior)) {
                         append(richParagraph.type.startText)
                     }
@@ -3603,6 +3616,18 @@ public class RichTextState internal constructor(
                 val isSelectionAtNewRichSpan =
                     newParagraphFirstRichSpan?.textRange?.min == tempTextFieldValue.selection.min - 1
 
+                if (isSelectionAtNewRichSpan && richSpan.paragraph.isEmpty() &&
+                    richSpan.paragraph.quoteDepth > 0 && richSpan.paragraph.type is DefaultParagraph
+                ) {
+                    richSpan.paragraph.quoteDepth -= 1
+                    tempTextFieldValue = tempTextFieldValue.copy(
+                        text = tempTextFieldValue.text.removeRange(sliceIndex, sliceIndex + 1),
+                        selection = TextRange(sliceIndex),
+                    )
+                    index--
+                    continue
+                }
+
                 // Check if the cursor is at the new paragraph and if it's an empty list item
                 if (
                     config.exitListOnEmptyItem &&
@@ -4257,6 +4282,7 @@ public class RichTextState internal constructor(
         val newRichParagraph = RichParagraph(
             paragraphStyle = paragraphStyle,
             type = type.getNextParagraphType(),
+            quoteDepth = quoteDepth,
         )
 
         var previousRichSpan: RichSpan
@@ -4556,6 +4582,8 @@ public class RichTextState internal constructor(
      * Updates the [currentAppliedParagraphStyle] to the [ParagraphStyle] that should be applied to the current selection.
      */
     private fun updateCurrentParagraphStyle() {
+        val selectedParagraphs = getRichParagraphListByTextRange(selection)
+        isBlockquote = selectedParagraphs.isNotEmpty() && selectedParagraphs.all { it.quoteDepth > 0 }
         if (selection.collapsed) {
             val richParagraph = getRichParagraphByTextIndex(selection.min - 1)
 
@@ -5395,6 +5423,8 @@ public class RichTextState internal constructor(
             ?: return
 
         val targetParagraph = richSpan.paragraph
+        // Rich paste inherits its destination's quote context, retaining deeper pasted quotes.
+        newParagraphs.forEach { it.quoteDepth = maxOf(it.quoteDepth, targetParagraph.quoteDepth) }
         val paragraphIndex = richParagraphList.indexOf(targetParagraph)
 
         val sliceIndex = max(position, richSpan.textRange.min)
@@ -5409,6 +5439,8 @@ public class RichTextState internal constructor(
         if (targetParagraphFirstHalf.isEmpty() && firstNewParagraph.isNotEmpty()) {
             targetParagraphFirstHalf.paragraphStyle = firstNewParagraph.paragraphStyle
             targetParagraphFirstHalf.type = firstNewParagraph.type
+            targetParagraphFirstHalf.quoteDepth = firstNewParagraph.quoteDepth
+            targetParagraphFirstHalf.headingStyle = firstNewParagraph.headingStyle
         }
 
         if (newParagraphs.size == 1) {
@@ -5491,7 +5523,7 @@ public class RichTextState internal constructor(
         annotatedString = buildAnnotatedString {
             var index = 0
             richParagraphList.fastForEachIndexed { i, richParagraph ->
-                withStyle(richParagraph.paragraphStyle.merge(richParagraph.type.getStyle(config))) {
+                withStyle(richParagraph.editorStyle(config)) {
                     withStyle(
                         richParagraph.getListMarkerSpanStyle(config.listMarkerStyleBehavior)
                     ) {

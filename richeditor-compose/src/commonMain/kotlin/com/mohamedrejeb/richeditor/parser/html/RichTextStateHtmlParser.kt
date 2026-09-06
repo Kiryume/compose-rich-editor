@@ -80,6 +80,7 @@ internal object RichTextStateHtmlParser : RichTextStateParser<String> {
                 stringBuilder.append(addedText)
 
                 val currentRichParagraph = richParagraphList.last()
+                currentRichParagraph.quoteDepth = openedTags.count { it.first == "blockquote" }
                 val safeCurrentRichSpan = currentRichSpan ?: RichSpan(paragraph = currentRichParagraph)
 
                 if (safeCurrentRichSpan.children.isEmpty()) {
@@ -211,6 +212,7 @@ internal object RichTextStateHtmlParser : RichTextStateParser<String> {
                         newRichParagraph.paragraphStyle = newRichParagraph.paragraphStyle.merge(tagParagraphStyle)
                     }
                     newRichParagraph.type = paragraphType
+                    newRichParagraph.quoteDepth = openedTags.count { it.first == "blockquote" }
                     // Record heading level as a first-class field so we don't need to fingerprint
                     // the span style on decode.
                     if (name in HeadingStyle.headingTags) {
@@ -273,6 +275,7 @@ internal object RichTextStateHtmlParser : RichTextStateParser<String> {
                                 isFromLineBreak = true,
                             )
 
+                    newParagraph.quoteDepth = openedTags.count { it.first == "blockquote" }
                     richParagraphList.add(newParagraph)
 
                     if (richParagraphList.lastIndex > 0)
@@ -371,6 +374,7 @@ internal object RichTextStateHtmlParser : RichTextStateParser<String> {
                         else
                             RichParagraph()
 
+                    newParagraph.quoteDepth = openedTags.count { it.first == "blockquote" }
                     richParagraphList.add(newParagraph)
 
                     toKeepEmptyParagraphIndexSet.add(richParagraphList.lastIndex)
@@ -455,7 +459,8 @@ internal object RichTextStateHtmlParser : RichTextStateParser<String> {
 
         if (
             richTextState.richParagraphList.size == 1 &&
-            richTextState.richParagraphList.first().isEmpty()
+            richTextState.richParagraphList.first().isEmpty() &&
+            richTextState.richParagraphList.first().quoteDepth == 0
         )
             return "<p></p>"
 
@@ -469,6 +474,7 @@ internal object RichTextStateHtmlParser : RichTextStateParser<String> {
 
         // Item/paragraph tag left open because the next paragraph is a <br> continuation.
         var openItemTag: String? = null
+        var openQuoteDepth = 0
 
         // Level of the list item whose </li> is withheld so the next, deeper list can
         // nest inside it. 0 when no item is withheld.
@@ -488,6 +494,20 @@ internal object RichTextStateHtmlParser : RichTextStateParser<String> {
         }
 
         paragraphs.fastForEachIndexed { index, richParagraph ->
+            if (richParagraph.quoteDepth != openQuoteDepth) {
+                openItemTag?.let { builder.append("</$it>") }
+                openItemTag = null
+                closeListsDownTo(0)
+                hostItemLevel = 0
+                while (openQuoteDepth > richParagraph.quoteDepth) {
+                    builder.append("</blockquote>")
+                    openQuoteDepth--
+                }
+                while (openQuoteDepth < richParagraph.quoteDepth) {
+                    builder.append("<blockquote>")
+                    openQuoteDepth++
+                }
+            }
             val richParagraphType = richParagraph.type
             val isParagraphEmpty = richParagraph.isEmpty()
             val paragraphGroupTagName = decodeHtmlElementFromRichParagraph(richParagraph)
@@ -507,6 +527,7 @@ internal object RichTextStateHtmlParser : RichTextStateParser<String> {
 
             val nextParagraph = paragraphs.getOrNull(index + 1)
             val nextIsLineBreakContinuation = nextParagraph != null &&
+                nextParagraph.quoteDepth == richParagraph.quoteDepth &&
                 nextParagraph.isFromLineBreak &&
                 !nextParagraph.isEmpty()
 
@@ -595,7 +616,9 @@ internal object RichTextStateHtmlParser : RichTextStateParser<String> {
                 val skipAddingBr =
                     isLastParagraphEmpty && index == paragraphs.lastIndex
 
-                if (!skipAddingBr)
+                if (richParagraph.quoteDepth > 0)
+                    builder.append("<p></p>")
+                else if (!skipAddingBr)
                     builder.append("<$BrElement>")
             } else {
                 // Create paragraph tag name
@@ -636,6 +659,7 @@ internal object RichTextStateHtmlParser : RichTextStateParser<String> {
                 val nextLevel = (nextParagraph?.type as? ConfigurableListLevel)?.level ?: 0
                 val nextIsDeeperListItem = isParagraphList &&
                     (nextParagraphTag == "ol" || nextParagraphTag == "ul") &&
+                    nextParagraph?.quoteDepth == richParagraph.quoteDepth &&
                     nextLevel > paragraphLevel
 
                 when {
@@ -658,6 +682,7 @@ internal object RichTextStateHtmlParser : RichTextStateParser<String> {
 
         // Close the remaining list tags (and any withheld host items)
         closeListsDownTo(0)
+        repeat(openQuoteDepth) { builder.append("</blockquote>") }
 
         return builder.toString()
     }

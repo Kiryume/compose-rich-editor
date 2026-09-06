@@ -84,6 +84,7 @@ internal object RichTextStateMarkdownParser : RichTextStateParser<String> {
                 richParagraphList.add(RichParagraph())
 
             val currentRichParagraph = richParagraphList.last()
+            currentRichParagraph.quoteDepth = openedNodes.count { it.type == MarkdownElementTypes.BLOCK_QUOTE }
             val safeCurrentRichSpan = currentRichSpan ?: RichSpan(paragraph = currentRichParagraph)
 
             if (safeCurrentRichSpan.children.isEmpty()) {
@@ -447,6 +448,7 @@ internal object RichTextStateMarkdownParser : RichTextStateParser<String> {
         var useLineBreak = false
 
         richTextState.richParagraphList.fastForEachIndexed { index, richParagraph ->
+            builder.append("> ".repeat(richParagraph.quoteDepth))
             // Append paragraph start text
             builder.appendParagraphStartText(richParagraph)
 

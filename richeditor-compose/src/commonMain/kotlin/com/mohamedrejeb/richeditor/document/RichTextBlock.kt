@@ -17,6 +17,7 @@ public data class RichTextBlock(
     public val type: RichTextBlockType = RichTextBlockType.Paragraph,
     public val spans: List<RichTextSpanMark> = emptyList(),
     public val headingLevel: Int = 0,
+    public val quoteDepth: Int = 0,
     public val textAlign: TextAlign = TextAlign.Unspecified,
     public val textDirection: TextDirection = TextDirection.Unspecified,
     public val lineHeight: TextUnit = TextUnit.Unspecified,
@@ -24,6 +25,7 @@ public data class RichTextBlock(
     public val isLineBreak: Boolean = false,
 ) {
     init {
+        require(quoteDepth >= 0) { "quoteDepth must be non-negative" }
         require(headingLevel in 0..6) { "headingLevel must be in 0..6, was $headingLevel" }
         spans.forEach { mark ->
             require(!mark.range.isEmpty()) { "Span mark range must not be empty: ${mark.range}" }
