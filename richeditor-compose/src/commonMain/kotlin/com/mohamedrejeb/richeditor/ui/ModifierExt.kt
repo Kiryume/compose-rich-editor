@@ -18,9 +18,11 @@ internal fun Modifier.drawRichSpanStyle(
     richTextState: RichTextState,
     topPadding: Float = 0f,
     startPadding: Float = 0f,
+    textOffsetY: () -> Float = { 0f },
 ): Modifier {
     return this
         .drawBehind {
+            val topPadding = topPadding + textOffsetY()
             richTextState.textLayoutResult?.let { layout ->
                 if (layout.layoutInput.text.length == richTextState.annotatedString.length) {
                     richTextState.richParagraphList.forEach { paragraph ->

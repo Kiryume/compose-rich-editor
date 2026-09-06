@@ -10,6 +10,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
@@ -19,6 +20,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.AlignmentLine
+import androidx.compose.ui.layout.FirstBaseline
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.layout.positionInWindow
@@ -35,6 +38,7 @@ import com.mohamedrejeb.richeditor.clipboard.ClipboardEventEffect
 import com.mohamedrejeb.richeditor.clipboard.createRichTextClipboardManager
 import com.mohamedrejeb.richeditor.model.RichTextState
 import kotlinx.coroutines.CoroutineScope
+import kotlin.math.roundToInt
 
 /**
  * Basic composable that enables users to edit rich text via hardware or software keyboard, but provides no decorations like hint or placeholder.
@@ -255,6 +259,7 @@ public fun BasicRichTextEditor(
     }
 
     CompositionLocalProvider(LocalClipboard provides richClipboardManager) {
+        var textOffsetY by remember(state) { mutableFloatStateOf(0f) }
         // Capture position on the innerTextField (the actual text content composable),
         // not on the outer BasicTextField, so trigger-suggestion popups can anchor
         // precisely at the text content's origin - not at the top of the decorated
@@ -264,13 +269,27 @@ public fun BasicRichTextEditor(
                 decorationBox {
                     Layout(
                         content = { innerTextField() },
-                        modifier = Modifier.onPlaced { coords ->
-                            state.textFieldWindowPosition = coords.positionInWindow()
-                        }
+                        modifier = Modifier
+                            .clipToBounds()
+                            .drawRichSpanStyle(state, textOffsetY = { textOffsetY })
+                            .onPlaced { coords ->
+                                state.textFieldWindowPosition = coords.positionInWindow()
+                            }
                     ) { measurables, constraints ->
                         val placeable = measurables.first().measure(constraints)
                         layout(placeable.width, placeable.height) {
                             placeable.place(0, 0)
+                            // BasicTextField scrolls internally without exposing its offset.
+                            // Its propagated baseline moves with the text, while TextLayoutResult
+                            // retains the unscrolled baseline. Read during placement so scrolling
+                            // updates decoration drawing even when text is not remeasured.
+                            val baseline = placeable[FirstBaseline]
+                            val textBaseline = state.textLayoutResult?.firstBaseline
+                            textOffsetY = if (baseline != AlignmentLine.Unspecified && textBaseline != null) {
+                                (baseline - textBaseline.roundToInt()).toFloat()
+                            } else {
+                                0f
+                            }
                         }
                     }
                 }
@@ -294,11 +313,6 @@ public fun BasicRichTextEditor(
 
                     state.onPreviewKeyEvent(event)
                 }
-                .drawRichSpanStyle(
-                    richTextState = state,
-                    topPadding = with(density) { contentPadding.calculateTopPadding().toPx() },
-                    startPadding = with(density) { contentPadding.calculateStartPadding(layoutDirection).toPx() },
-                )
                 .then(
                     if (!readOnly)
                         Modifier
