@@ -8,6 +8,44 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class BlockquoteTest {
+    @Test fun backspaceExitsNewEmptyQuoteAndCanBeUndone() {
+        val state = RichTextState()
+        state.toggleBlockquote()
+        assertTrue(state.removeEmptyQuoteOnBackspace())
+        assertFalse(state.isBlockquote)
+        assertEquals("", state.toText())
+        state.history.undo()
+        assertTrue(state.isBlockquote)
+        state.history.redo()
+        assertFalse(state.isBlockquote)
+        assertFalse(state.removeEmptyQuoteOnBackspace())
+    }
+
+    @Test fun backspaceRemovesOneQuoteLevelWithoutChangingHeadingOrAdjacentText() {
+        val state = RichTextState().setHtml("<p>Before</p><blockquote><blockquote><h1></h1></blockquote></blockquote><p>After</p>")
+        val originalText = state.toText()
+        state.selection = TextRange(state.richParagraphList[1].getTextRange().min)
+        assertTrue(state.removeEmptyQuoteOnBackspace())
+        assertEquals(listOf(0, 1, 0), state.richParagraphList.map { it.quoteDepth })
+        assertEquals(HeadingStyle.H1, state.currentHeadingStyle)
+        assertEquals(originalText, state.toText())
+        assertTrue(state.removeEmptyQuoteOnBackspace())
+        assertEquals(listOf(0, 0, 0), state.richParagraphList.map { it.quoteDepth })
+        assertEquals(originalText, state.toText())
+    }
+
+    @Test fun backspaceLeavesNonEmptyQuotesAndSelectionsToNormalTextDeletion() {
+        val state = RichTextState().setHtml("<blockquote><p>Text</p></blockquote>")
+        state.selection = TextRange(0)
+        assertFalse(state.removeEmptyQuoteOnBackspace())
+        state.selection = TextRange(4)
+        assertFalse(state.removeEmptyQuoteOnBackspace())
+        state.selection = TextRange(0, 4)
+        assertFalse(state.removeEmptyQuoteOnBackspace())
+        assertTrue(state.isBlockquote)
+        assertEquals("Text", state.toText())
+    }
+
     private fun RichTextState.commit(start: Int, end: Int = start, value: String) {
         val text = textFieldValue.text.replaceRange(start, end, value)
         onTextFieldValueChange(TextFieldValue(text, TextRange(start + value.length)))

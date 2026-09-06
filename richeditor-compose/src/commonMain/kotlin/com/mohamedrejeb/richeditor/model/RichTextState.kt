@@ -1857,8 +1857,21 @@ public class RichTextState internal constructor(
         resetParagraphType(paragraph = paragraph)
     }
 
+    /** Remove one quote level when Backspace has no paragraph text to delete. */
+    internal fun removeEmptyQuoteOnBackspace(): Boolean {
+        if (!selection.collapsed) return false
+        val paragraph = getRichParagraphListByTextRange(selection).singleOrNull() ?: return false
+        if (paragraph.quoteDepth == 0 || !paragraph.isEmpty() || paragraph.type !is DefaultParagraph) return false
+        recordHistory(CommitTrigger.Structural) {
+            paragraph.quoteDepth -= 1
+            updateAnnotatedString()
+            updateCurrentParagraphStyle()
+        }
+        return true
+    }
+
     /**
-     * Increases and decreases the list level of the current selected lists when the Tab key is pressed.
+     * Handles structural editing and keyboard shortcuts.
      *
      * @param event the key event.
      * @return true if the list level was increased or decreased, false otherwise.
@@ -1894,6 +1907,11 @@ public class RichTextState internal constructor(
 
         if (event.type != KeyEventType.KeyDown)
             return false
+
+        if (event.key == Key.Backspace &&
+            !event.isMetaPressed && !event.isCtrlPressed && !event.isAltPressed &&
+            removeEmptyQuoteOnBackspace()
+        ) return true
 
         if (event.key != Key.Tab)
             return false

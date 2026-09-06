@@ -295,91 +295,93 @@ public fun BasicRichTextEditor(
                 }
             }
 
-        BasicTextField(
-            value = state.textFieldValue,
-            onValueChange = {
-                if (readOnly) return@BasicTextField
-                if (it.text.length > maxLength) return@BasicTextField
+        RichTextEditorInput(state, editable = enabled && !readOnly) {
+            BasicTextField(
+                value = state.textFieldValue,
+                onValueChange = {
+                    if (readOnly) return@BasicTextField
+                    if (it.text.length > maxLength) return@BasicTextField
 
-                state.onTextFieldValueChange(it)
-            },
-            modifier = modifier
-                .onFocusChanged { focusState ->
-                    state.isFocused = focusState.isFocused
-                }
-                .onPreviewKeyEvent { event ->
-                    if (readOnly)
-                        return@onPreviewKeyEvent false
+                    state.onTextFieldValueChange(it)
+                },
+                modifier = modifier
+                    .onFocusChanged { focusState ->
+                        state.isFocused = focusState.isFocused
+                    }
+                    .onPreviewKeyEvent { event ->
+                        if (readOnly)
+                            return@onPreviewKeyEvent false
 
-                    state.onPreviewKeyEvent(event)
-                }
-                .then(
-                    if (!readOnly)
-                        Modifier
-                    else
-                        Modifier.focusProperties { canFocus = false }
-                )
-                .then(
-                    if (singleParagraph)
-                        Modifier
-                    else
-                        Modifier
-                            // Passive pointer observer feeding the geometric selection
-                            // clamp; never consumes events.
-                            .pointerInput(state) {
-                                val topPadding = with(density) { contentPadding.calculateTopPadding().toPx() }
-                                val startPadding =
-                                    with(density) { contentPadding.calculateStartPadding(layoutDirection).toPx() }
-                                awaitPointerEventScope {
-                                    while (true) {
-                                        val event = awaitPointerEvent(PointerEventPass.Initial)
-                                        val change = event.changes.firstOrNull { it.pressed } ?: continue
-                                        state.onSelectionGesturePointerMove(
-                                            Offset(
-                                                change.position.x - startPadding,
-                                                change.position.y - topPadding,
+                        state.onPreviewKeyEvent(event)
+                    }
+                    .then(
+                        if (!readOnly)
+                            Modifier
+                        else
+                            Modifier.focusProperties { canFocus = false }
+                    )
+                    .then(
+                        if (singleParagraph)
+                            Modifier
+                        else
+                            Modifier
+                                // Passive pointer observer feeding the geometric selection
+                                // clamp; never consumes events.
+                                .pointerInput(state) {
+                                    val topPadding = with(density) { contentPadding.calculateTopPadding().toPx() }
+                                    val startPadding =
+                                        with(density) { contentPadding.calculateStartPadding(layoutDirection).toPx() }
+                                    awaitPointerEventScope {
+                                        while (true) {
+                                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                                            val change = event.changes.firstOrNull { it.pressed } ?: continue
+                                            state.onSelectionGesturePointerMove(
+                                                Offset(
+                                                    change.position.x - startPadding,
+                                                    change.position.y - topPadding,
+                                                )
                                             )
-                                        )
+                                        }
                                     }
                                 }
-                            }
-                            // Workaround for Desktop to fix a bug in BasicTextField where it doesn't select the correct text
-                            // when the text contains multiple paragraphs.
-                            .adjustTextIndicatorOffset(
-                                state = state,
-                                contentPadding = contentPadding,
-                                density = density,
-                                layoutDirection = layoutDirection,
-                                scope = rememberCoroutineScope()
-                            )
-                ),
-            enabled = enabled,
-            readOnly = readOnly,
-            textStyle = textStyle,
-            keyboardOptions = keyboardOptions,
-            keyboardActions = keyboardActions,
-            singleLine = singleLine,
-            maxLines = maxLines,
-            minLines = minLines,
-            visualTransformation = if (enabled) {
-                state.visualTransformation
-            } else {
-                DisabledTextVisualTransformation(
-                    delegate = state.visualTransformation,
-                    disabledAlpha = DisabledStateAlpha,
-                )
-            },
-            onTextLayout = {
-                state.onTextLayout(
-                    textLayoutResult = it,
-                    density = density,
-                )
-                onTextLayout(it)
-            },
-            interactionSource = interactionSource,
-            cursorBrush = cursorBrush,
-            decorationBox = positionCapturingDecorationBox,
-        )
+                                // Workaround for Desktop to fix a bug in BasicTextField where it doesn't select the correct text
+                                // when the text contains multiple paragraphs.
+                                .adjustTextIndicatorOffset(
+                                    state = state,
+                                    contentPadding = contentPadding,
+                                    density = density,
+                                    layoutDirection = layoutDirection,
+                                    scope = rememberCoroutineScope()
+                                )
+                    ),
+                enabled = enabled,
+                readOnly = readOnly,
+                textStyle = textStyle,
+                keyboardOptions = keyboardOptions,
+                keyboardActions = keyboardActions,
+                singleLine = singleLine,
+                maxLines = maxLines,
+                minLines = minLines,
+                visualTransformation = if (enabled) {
+                    state.visualTransformation
+                } else {
+                    DisabledTextVisualTransformation(
+                        delegate = state.visualTransformation,
+                        disabledAlpha = DisabledStateAlpha,
+                    )
+                },
+                onTextLayout = {
+                    state.onTextLayout(
+                        textLayoutResult = it,
+                        density = density,
+                    )
+                    onTextLayout(it)
+                },
+                interactionSource = interactionSource,
+                cursorBrush = cursorBrush,
+                decorationBox = positionCapturingDecorationBox,
+            )
+        }
     }
 }
 

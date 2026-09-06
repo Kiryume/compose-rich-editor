@@ -3,6 +3,7 @@ package com.mohamedrejeb.richeditor.ui
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.onPointerEvent
@@ -38,3 +39,7 @@ internal actual fun Modifier.adjustTextIndicatorOffset(
     .onPointerEvent(PointerEventType.Release) {
         state.onSelectionGestureEnd()
     }
+
+internal actual fun PlatformTextInputMethodRequest.withEmptyQuoteBackspace(
+    state: RichTextState,
+): PlatformTextInputMethodRequest = this

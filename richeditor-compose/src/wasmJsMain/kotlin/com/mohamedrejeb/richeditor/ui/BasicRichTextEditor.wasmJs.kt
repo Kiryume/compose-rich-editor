@@ -1,6 +1,7 @@
 package com.mohamedrejeb.richeditor.ui
 
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
@@ -14,3 +15,7 @@ internal actual fun Modifier.adjustTextIndicatorOffset(
     layoutDirection: LayoutDirection,
     scope: CoroutineScope
 ): Modifier = this
+
+internal actual fun PlatformTextInputMethodRequest.withEmptyQuoteBackspace(
+    state: RichTextState,
+): PlatformTextInputMethodRequest = this
