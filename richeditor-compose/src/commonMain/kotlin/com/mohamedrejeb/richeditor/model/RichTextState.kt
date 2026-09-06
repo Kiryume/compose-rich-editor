@@ -615,6 +615,12 @@ public class RichTextState internal constructor(
     public var isBlockquote: Boolean by mutableStateOf(false)
         private set
 
+    private var currentAppliedHeadingStyle: HeadingStyle by mutableStateOf(HeadingStyle.Normal)
+
+    /** Observable heading level of the paragraph at the current selection start. */
+    public val currentHeadingStyle: HeadingStyle
+        get() = currentAppliedHeadingStyle
+
     public var isList: Boolean by mutableStateOf(isUnorderedList || isOrderedList)
         private set
     public var canIncreaseListLevel: Boolean by mutableStateOf(false)
@@ -1030,14 +1036,6 @@ public class RichTextState internal constructor(
     ) {
         removeSpanStyle(currentSpanStyle, textRange)
     }
-
-    /**
-     * Heading style of the paragraph at the current selection start, or [HeadingStyle.Normal]
-     * if the caret is not in any paragraph. Mirrors the [currentParagraphStyle] pattern so
-     * toolbars can highlight the active heading level.
-     */
-    public val currentHeadingStyle: HeadingStyle
-        get() = getRichParagraphByTextIndex(selection.min - 1)?.headingStyle ?: HeadingStyle.Normal
 
     /**
      * Sets the heading style for the currently selected paragraphs.
@@ -3719,6 +3717,7 @@ public class RichTextState internal constructor(
                 ) {
                     newParagraphFirstRichSpan.spanStyle = SpanStyle()
                     newParagraphFirstRichSpan.richSpanStyle = RichSpanStyle.Default
+                    newParagraph.headingStyle = HeadingStyle.Normal
                 } else if (
                     config.preserveStyleOnEmptyLine &&
                     isSelectionAtNewRichSpan
@@ -4348,6 +4347,7 @@ public class RichTextState internal constructor(
         val newRichParagraph = RichParagraph(
             paragraphStyle = paragraphStyle,
             type = type.getNextParagraphType(),
+            headingStyle = headingStyle,
             quoteDepth = quoteDepth,
         )
 
@@ -4650,6 +4650,7 @@ public class RichTextState internal constructor(
     private fun updateCurrentParagraphStyle() {
         val selectedParagraphs = getRichParagraphListByTextRange(selection)
         isBlockquote = selectedParagraphs.isNotEmpty() && selectedParagraphs.all { it.quoteDepth > 0 }
+        currentAppliedHeadingStyle = selectedParagraphs.firstOrNull()?.headingStyle ?: HeadingStyle.Normal
         if (selection.collapsed) {
             val richParagraph = getRichParagraphByTextIndex(selection.min - 1)
 

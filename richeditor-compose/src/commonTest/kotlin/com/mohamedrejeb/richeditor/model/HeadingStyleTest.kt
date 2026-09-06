@@ -3,6 +3,7 @@ package com.mohamedrejeb.richeditor.model
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.em
 import com.mohamedrejeb.richeditor.paragraph.RichParagraph
@@ -12,6 +13,64 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 
 class HeadingStyleTest {
+
+    private fun RichTextState.enter() {
+        val caret = selection.min
+        onTextFieldValueChange(TextFieldValue(
+            text = textFieldValue.text.replaceRange(caret, selection.max, "\n"),
+            selection = TextRange(caret + 1),
+        ))
+    }
+
+    @Test
+    fun enterPreservesHeadingIdentityAlongsideInheritedVisualStyle() {
+        HeadingStyle.entries.filter { it != HeadingStyle.Normal }.forEach { heading ->
+            val state = RichTextState().setText("Title")
+            state.setHeadingStyle(heading)
+            state.selection = TextRange(5)
+            state.enter()
+
+            assertEquals(listOf(heading, heading), state.richParagraphList.map { it.headingStyle })
+            assertEquals(heading, state.currentHeadingStyle)
+            assertEquals(heading.defaultSpanStyle.fontSize, state.currentSpanStyle.fontSize)
+            state.onTextFieldValueChange(TextFieldValue("Title Next", TextRange(10)))
+            assertEquals("<${heading.htmlTag}>Title</${heading.htmlTag}><${heading.htmlTag}>Next</${heading.htmlTag}>", state.toHtml())
+            state.setHeadingStyle(HeadingStyle.Normal)
+            assertEquals("<${heading.htmlTag}>Title</${heading.htmlTag}><p>Next</p>", state.toHtml())
+        }
+    }
+
+    @Test
+    fun enterInMiddleOfHeadingPreservesBothHalvesThroughUndoRedo() {
+        val state = RichTextState().setHtml("<h2>Title</h2>")
+        state.selection = TextRange(2)
+        state.enter()
+        assertEquals("<h2>Ti</h2><h2>tle</h2>", state.toHtml())
+        assertEquals(HeadingStyle.H2, state.currentHeadingStyle)
+        state.history.undo()
+        assertEquals("<h2>Title</h2>", state.toHtml())
+        state.history.redo()
+        assertEquals("<h2>Ti</h2><h2>tle</h2>", state.toHtml())
+    }
+
+    @Test
+    fun enterThatClearsVisualStyleAlsoClearsHeadingIdentity() {
+        val state = RichTextState()
+        state.setHeadingStyle(HeadingStyle.H1)
+        state.enter()
+        assertEquals(listOf(HeadingStyle.H1, HeadingStyle.Normal), state.richParagraphList.map { it.headingStyle })
+        assertEquals(HeadingStyle.Normal, state.currentHeadingStyle)
+        assertEquals(null, state.currentSpanStyle.fontWeight)
+
+        state.setText("Title")
+        state.setHeadingStyle(HeadingStyle.H2)
+        state.config.preserveStyleOnEmptyLine = false
+        state.selection = TextRange(5)
+        state.enter()
+        assertEquals(listOf(HeadingStyle.H2, HeadingStyle.Normal), state.richParagraphList.map { it.headingStyle })
+        assertEquals(HeadingStyle.Normal, state.currentHeadingStyle)
+        assertEquals(null, state.currentSpanStyle.fontWeight)
+    }
 
     @Test
     fun levelMaps() {
