@@ -494,6 +494,8 @@ public class RichTextState internal constructor(
      */
     public val selectedLinkUrl: String? get() = (currentAppliedRichSpanStyle as? RichSpanStyle.Link)?.url
 
+    /** Full link range for editing its label from an external toolbar. */
+    public val selectedLinkTextRange: TextRange? get() = getSelectedLinkRichSpan()?.fullTextRange
 
     @Deprecated(
         message = "Use isCodeSpan instead",
