@@ -2080,6 +2080,9 @@ public class RichTextState internal constructor(
     }
 
     internal fun onTextFieldValueChange(newTextFieldValue: TextFieldValue) {
+        // IMEs and plain clipboard entries can contain CRLF or CR. Normalize before
+        // diffing/splitting so history, quote continuation, and caret offsets agree.
+        val newTextFieldValue = newTextFieldValue.normalizeLineEndings()
         // Classify the change for history before any mutation happens.
         // With rich clipboard disabled, stashed HTML is ignored and the pasted text flows
         // through the normal insertion path, inheriting styles at the caret like typed text.
@@ -2112,6 +2115,13 @@ public class RichTextState internal constructor(
                 lastImeEditMs = currentMonotonicMs()
             }
         }
+    }
+
+    private fun TextFieldValue.normalizeLineEndings(): TextFieldValue {
+        if ('\r' !in text) return this
+        fun offset(index: Int) = text.substring(0, index.coerceIn(0, text.length)).normalizeNewlines().length
+        fun range(value: TextRange) = TextRange(offset(value.start), offset(value.end))
+        return copy(text = text.normalizeNewlines(), selection = range(selection), composition = composition?.let(::range))
     }
 
     /**

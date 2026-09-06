@@ -119,5 +119,12 @@ class BlockquoteTest {
         assertEquals("<blockquote><p>Outer</p></blockquote>", state.toHtml(TextRange(0, 5)))
     }
 
+    @Test fun windowsNewlinesInQuotedPasteAreNormalized() {
+        val state = RichTextState().setHtml("<blockquote><p>Before </p></blockquote>")
+        state.selection = TextRange(state.annotatedString.length)
+        state.commit(state.selection.start, value = "first\r\nsecond")
+        assertEquals("Before first\nsecond", state.toText())
+        assertEquals(listOf(1, 1), state.richParagraphList.map { it.quoteDepth })
+    }
 
 }
