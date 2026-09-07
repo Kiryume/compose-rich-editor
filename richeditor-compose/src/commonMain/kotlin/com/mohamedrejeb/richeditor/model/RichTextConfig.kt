@@ -1,6 +1,9 @@
 package com.mohamedrejeb.richeditor.model
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.sp
@@ -17,6 +20,16 @@ public class RichTextConfig internal constructor(
         set(value) { field = value; updateText() }
 
     public var blockquoteBackgroundColor: Color = Color.Transparent
+        set(value) { field = value; updateText() }
+
+    /** Visual quote styles, never written to the document or exported HTML. */
+    public var blockquoteSpanStyle: SpanStyle = SpanStyle()
+        set(value) { field = value; updateText() }
+
+    public var blockquoteIndent: TextUnit = 16.sp
+        set(value) { field = value; updateText() }
+
+    public var blockquoteStrokeWidth: Dp = 2.dp
         set(value) { field = value; updateText() }
 
     public var linkColor: Color = Color.Blue

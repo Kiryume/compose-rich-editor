@@ -1,6 +1,11 @@
 package com.mohamedrejeb.richeditor.model
 
 import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.input.TextFieldValue
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -8,6 +13,35 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class BlockquoteTest {
+    @Test fun quoteAppearanceRemainsVisualThroughTypingCopyAndToggle() {
+        val state = RichTextState().setHtml("<blockquote><p>Quoted</p></blockquote>")
+        val quoteStyle = SpanStyle(color = Color.Gray, fontStyle = FontStyle.Italic)
+        state.config.blockquoteSpanStyle = quoteStyle
+        state.config.blockquoteIndent = 13.sp
+        state.config.blockquoteStrokeWidth = 3.dp
+        assertTrue(state.annotatedString.spanStyles.any { it.item == quoteStyle && it.start == 0 && it.end == 6 })
+        assertEquals(13.sp, state.annotatedString.paragraphStyles.first().item.textIndent?.restLine)
+        assertEquals("<blockquote><p>Quoted</p></blockquote>", state.toHtml())
+
+        state.selection = TextRange(state.annotatedString.length)
+        state.commit(state.selection.start, value = " text")
+        assertTrue(state.annotatedString.spanStyles.any { it.item == quoteStyle && it.end == 11 })
+        assertEquals("<blockquote><p>Quoted text</p></blockquote>", state.toHtml())
+        assertFalse(state.currentSpanStyle.fontStyle == FontStyle.Italic)
+
+        val copy = state.copy()
+        assertEquals(quoteStyle, copy.config.blockquoteSpanStyle)
+        assertEquals(13.sp, copy.config.blockquoteIndent)
+        assertEquals(3.dp, copy.config.blockquoteStrokeWidth)
+        assertEquals(state.toHtml(), copy.toHtml())
+
+        state.toggleBlockquote()
+        assertFalse(state.annotatedString.spanStyles.any { it.item == quoteStyle })
+        assertEquals("<p>Quoted text</p>", state.toHtml())
+        state.history.undo()
+        assertTrue(state.annotatedString.spanStyles.any { it.item == quoteStyle })
+    }
+
     @Test fun backspaceExitsNewEmptyQuoteAndCanBeUndone() {
         val state = RichTextState()
         state.toggleBlockquote()

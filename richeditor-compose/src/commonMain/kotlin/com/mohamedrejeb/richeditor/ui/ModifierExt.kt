@@ -2,9 +2,8 @@ package com.mohamedrejeb.richeditor.ui
 
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.ResolvedTextDirection
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.text.TextRange
@@ -25,7 +24,8 @@ internal fun Modifier.drawRichSpanStyle(
             val topPadding = topPadding + textOffsetY()
             richTextState.textLayoutResult?.let { layout ->
                 if (layout.layoutInput.text.length == richTextState.annotatedString.length) {
-                    richTextState.richParagraphList.forEach { paragraph ->
+                    val paragraphs = richTextState.richParagraphList
+                    paragraphs.forEach { paragraph ->
                         if (paragraph.quoteDepth > 0) {
                             val range = paragraph.getTextRange()
                             val start = range.min.coerceIn(0, layout.layoutInput.text.length)
@@ -35,12 +35,37 @@ internal fun Modifier.drawRichSpanStyle(
                             drawRect(richTextState.config.blockquoteBackgroundColor,
                                 topLeft = Offset(startPadding, top),
                                 size = Size((size.width - startPadding).coerceAtLeast(0f), bottom - top))
+                        }
+                    }
+                    // Draw bars after every background so later paragraphs cannot cover a shared bar.
+                    paragraphs.forEachIndexed { paragraphIndex, paragraph ->
+                        if (paragraph.quoteDepth > 0) {
+                            val start = paragraph.getTextRange().min.coerceIn(0, layout.layoutInput.text.length)
+                            val top = layout.getLineTop(layout.getLineForOffset(start)) + topPadding
                             val rtl = layout.getParagraphDirection(start) == ResolvedTextDirection.Rtl
                             repeat(paragraph.quoteDepth) { depth ->
-                                val inset = startPadding + depth * 16.sp.toPx() + 2.dp.toPx()
-                                val x = if (rtl) size.width - inset else inset
-                                drawLine(richTextState.config.blockquoteColor,
-                                    Offset(x, top), Offset(x, bottom), strokeWidth = 2.dp.toPx())
+                                // One continuous rounded bar for adjacent paragraphs at this depth.
+                                if ((paragraphs.getOrNull(paragraphIndex - 1)?.quoteDepth ?: 0) > depth) {
+                                    return@repeat
+                                }
+                                var lastIndex = paragraphIndex
+                                while ((paragraphs.getOrNull(lastIndex + 1)?.quoteDepth ?: 0) > depth) lastIndex++
+                                val lastRange = paragraphs[lastIndex].getTextRange()
+                                // An empty final paragraph has no last character: use its own
+                                // start so Enter extends the bar before the user types again.
+                                val lastStart = lastRange.min.coerceIn(start, layout.layoutInput.text.length)
+                                val lastOffset = (lastRange.max - 1)
+                                    .coerceIn(lastStart, layout.layoutInput.text.length)
+                                val barBottom = layout.getLineBottom(layout.getLineForOffset(lastOffset)) + topPadding
+                                val width = richTextState.config.blockquoteStrokeWidth.toPx()
+                                val inset = startPadding + depth * richTextState.config.blockquoteIndent.toPx()
+                                val x = if (rtl) size.width - inset - width else inset
+                                drawRoundRect(
+                                    color = richTextState.config.blockquoteColor,
+                                    topLeft = Offset(x, top),
+                                    size = Size(width, barBottom - top),
+                                    cornerRadius = CornerRadius(width / 2f),
+                                )
                             }
                         }
                     }

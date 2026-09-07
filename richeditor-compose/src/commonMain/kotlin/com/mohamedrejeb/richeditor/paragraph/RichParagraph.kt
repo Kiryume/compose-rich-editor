@@ -415,7 +415,7 @@ internal class RichParagraph(
         val style = paragraphStyle.merge(type.getStyle(config))
         if (quoteDepth == 0) return style
         val indent = style.textIndent ?: androidx.compose.ui.text.style.TextIndent.None
-        val quoteIndent = androidx.compose.ui.unit.TextUnit(16f * quoteDepth, androidx.compose.ui.unit.TextUnitType.Sp)
+        val quoteIndent = config.blockquoteIndent * quoteDepth
         return style.copy(textIndent = androidx.compose.ui.text.style.TextIndent(
             firstLine = androidx.compose.ui.unit.TextUnit(indent.firstLine.value + quoteIndent.value, androidx.compose.ui.unit.TextUnitType.Sp),
             restLine = androidx.compose.ui.unit.TextUnit(indent.restLine.value + quoteIndent.value, androidx.compose.ui.unit.TextUnitType.Sp),

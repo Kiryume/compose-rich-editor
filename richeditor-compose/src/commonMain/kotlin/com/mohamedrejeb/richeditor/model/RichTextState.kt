@@ -2831,7 +2831,7 @@ public class RichTextState internal constructor(
                     richParagraph.type.startRichSpan.textRange =
                         TextRange(index, index + richParagraphStartTextLength)
                     index += richParagraphStartTextLength
-                    withStyle(RichSpanStyle.DefaultSpanStyle) {
+                    withStyle(if (richParagraph.quoteDepth > 0) config.blockquoteSpanStyle else RichSpanStyle.DefaultSpanStyle) {
                         index = append(
                             state = this@RichTextState,
                             richSpanList = richParagraph.children,
@@ -5278,6 +5278,11 @@ public class RichTextState internal constructor(
         val richTextState = RichTextState(richParagraphList)
         richTextState.updateTextFieldValue(textFieldValue)
         richTextState.config.linkColor = config.linkColor
+        richTextState.config.blockquoteColor = config.blockquoteColor
+        richTextState.config.blockquoteBackgroundColor = config.blockquoteBackgroundColor
+        richTextState.config.blockquoteSpanStyle = config.blockquoteSpanStyle
+        richTextState.config.blockquoteIndent = config.blockquoteIndent
+        richTextState.config.blockquoteStrokeWidth = config.blockquoteStrokeWidth
         richTextState.config.linkTextDecoration = config.linkTextDecoration
         richTextState.config.codeSpanColor = config.codeSpanColor
         richTextState.config.codeSpanBackgroundColor = config.codeSpanBackgroundColor
@@ -5601,7 +5606,7 @@ public class RichTextState internal constructor(
                     richParagraph.type.startRichSpan.textRange =
                         TextRange(index, index + richParagraphStartTextLength)
                     index += richParagraphStartTextLength
-                    withStyle(RichSpanStyle.DefaultSpanStyle) {
+                    withStyle(if (richParagraph.quoteDepth > 0) config.blockquoteSpanStyle else RichSpanStyle.DefaultSpanStyle) {
                         index = append(
                             state = this@RichTextState,
                             richSpanList = richParagraph.children,
