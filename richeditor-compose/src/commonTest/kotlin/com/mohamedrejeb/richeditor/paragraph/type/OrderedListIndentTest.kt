@@ -133,6 +133,23 @@ class OrderedListIndentTest {
     }
 
     @Test
+    fun numberedListsCanStartAtMarginWithoutChangingBulletsOrWrapping() {
+        val config = config(indent = 16)
+        val bullet = UnorderedList(config = config).apply { startTextWidth = 12.sp }
+        val bulletIndent = bullet.getStyle(config).textIndent
+        val numbered = OrderedList(number = 10, config = config, startTextWidth = 24.sp)
+
+        config.orderedListIndent = 0
+        config.orderedListPrefixAlignment = ListPrefixAlignment.Start
+
+        val numberedIndent = numbered.getStyle(config).textIndent!!
+        assertEquals(0.sp, numberedIndent.firstLine)
+        assertEquals(24.sp, numberedIndent.restLine)
+        assertEquals(bulletIndent, bullet.getStyle(config).textIndent)
+        assertEquals(numberedIndent, numbered.getNextParagraphType().getStyle(config).textIndent)
+    }
+
+    @Test
     fun unorderedListRespectsAlignment() {
         val endConfig = config(indent = 38, alignment = ListPrefixAlignment.End)
         val endList = UnorderedList(config = endConfig).apply { startTextWidth = 12.sp }

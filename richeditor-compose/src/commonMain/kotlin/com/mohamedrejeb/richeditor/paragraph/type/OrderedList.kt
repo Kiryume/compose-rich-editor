@@ -50,7 +50,7 @@ internal class OrderedList private constructor(
         startTextWidth = startTextWidth,
         initialLevel = initialLevel,
         initialStyleType = config.orderedListStyleType,
-        initialPrefixAlignment = config.listPrefixAlignment,
+        initialPrefixAlignment = config.orderedListPrefixAlignment ?: config.listPrefixAlignment,
         startFrom = startFrom,
     )
 
@@ -102,8 +102,9 @@ internal class OrderedList private constructor(
             styleType = config.orderedListStyleType
         }
 
-        if (config.listPrefixAlignment != prefixAlignment) {
-            prefixAlignment = config.listPrefixAlignment
+        val configuredAlignment = config.orderedListPrefixAlignment ?: config.listPrefixAlignment
+        if (configuredAlignment != prefixAlignment) {
+            prefixAlignment = configuredAlignment
         }
 
         return style

@@ -177,6 +177,14 @@ public class RichTextConfig internal constructor(
             updateText()
         }
 
+    /** Optional numbered-list override; null uses [listPrefixAlignment]. */
+    @ExperimentalRichTextApi
+    public var orderedListPrefixAlignment: ListPrefixAlignment? = null
+        set(value) {
+            field = value
+            updateText()
+        }
+
     /**
      * Whether to preserve the style when the line is empty.
      * The line can be empty when the user deletes all the characters

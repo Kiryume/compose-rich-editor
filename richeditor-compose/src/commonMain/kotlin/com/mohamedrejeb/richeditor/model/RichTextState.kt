@@ -5289,6 +5289,8 @@ public class RichTextState internal constructor(
         richTextState.config.codeSpanStrokeColor = config.codeSpanStrokeColor
         richTextState.config.listIndent = config.listIndent
         richTextState.config.orderedListIndent = config.orderedListIndent
+        richTextState.config.listPrefixAlignment = config.listPrefixAlignment
+        richTextState.config.orderedListPrefixAlignment = config.orderedListPrefixAlignment
         richTextState.config.unorderedListIndent = config.unorderedListIndent
         richTextState.config.unorderedListStyleType = config.unorderedListStyleType
         richTextState.config.orderedListStyleType = config.orderedListStyleType
