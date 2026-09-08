@@ -25,6 +25,20 @@ import kotlin.test.assertEquals
 class RichTextStateImageTest {
 
     @Test
+    fun deletingTheOnlyImageDoesNotRestoreItAsAnEmptyLineStyle() {
+        val state = RichTextState().setHtml("""<p><img src="test.png"></p>""")
+        val original = state.toHtml()
+        state.history.group {
+            state.selection = TextRange(0, 1)
+            state.replaceSelectedText("")
+        }
+        assertEquals("", state.toText())
+        assertEquals(0, state.annotatedString.length)
+        state.history.undo()
+        assertEquals(original, state.toHtml())
+    }
+
+    @Test
     fun testImageDoesNotDesyncAnnotatedAndRawLengths() {
         val state = RichTextState()
         state.setHtml("""<p>Hello <img src="test.png" width="10" height="10" alt="img"/> World</p>""")

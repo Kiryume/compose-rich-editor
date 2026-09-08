@@ -3324,7 +3324,9 @@ public class RichTextState internal constructor(
                 }
 
             minParagraphFirstRichSpan.spanStyle = currentAppliedSpanStyle
-            minParagraphFirstRichSpan.richSpanStyle = currentAppliedRichSpanStyle
+            // An atomic object must stay deleted when it was the paragraph's last content.
+            minParagraphFirstRichSpan.richSpanStyle =
+                currentAppliedRichSpanStyle.takeUnless { it.isAtomic } ?: RichSpanStyle.Default
         }
 
         checkOrderedListsNumbers(
