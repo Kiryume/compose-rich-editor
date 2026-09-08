@@ -811,8 +811,8 @@ internal object RichTextStateHtmlParser : RichTextStateParser<String> {
             "img" ->
                 RichSpanStyle.Image(
                     model = attributes["src"].orEmpty(),
-                    width = (attributes["width"]?.toIntOrNull() ?: 0).sp,
-                    height = (attributes["height"]?.toIntOrNull() ?: 0).sp,
+                    width = (attributes["width"]?.toFloatOrNull()?.takeIf { it.isFinite() && it >= 0 } ?: 0f).sp,
+                    height = (attributes["height"]?.toFloatOrNull()?.takeIf { it.isFinite() && it >= 0 } ?: 0f).sp,
                     contentDescription = attributes["alt"] ?: ""
                 )
 
@@ -882,6 +882,7 @@ internal object RichTextStateHtmlParser : RichTextStateParser<String> {
                         "src" to richSpanStyle.model,
                         "width" to richSpanStyle.width.value.toString(),
                         "height" to richSpanStyle.height.value.toString(),
+                        "alt" to richSpanStyle.contentDescription.orEmpty(),
                     )
                 else
                     "span" to emptyMap()

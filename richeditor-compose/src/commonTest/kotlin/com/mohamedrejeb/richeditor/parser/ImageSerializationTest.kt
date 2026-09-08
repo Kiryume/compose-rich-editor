@@ -85,7 +85,7 @@ class ImageSerializationTest {
 
     @Test
     fun toHtml_imageRoundTripPreservesImage() {
-        val original = """<p><img src="https://example.com/a.png" width="200" height="100"></p>"""
+        val original = """<p><img src="https://example.com/a.png" width="200.5" height="100.25" alt="A landscape"></p>"""
         val state = RichTextState()
         state.setHtml(original)
         val exported = state.toHtml()
@@ -95,6 +95,9 @@ class ImageSerializationTest {
 
         val imageSpan = findImageSpan(reparsed)
         assertEquals("https://example.com/a.png", imageSpan.model)
+        assertEquals(200.5.sp, imageSpan.width)
+        assertEquals(100.25.sp, imageSpan.height)
+        assertEquals("A landscape", imageSpan.contentDescription)
     }
 
     @Test
