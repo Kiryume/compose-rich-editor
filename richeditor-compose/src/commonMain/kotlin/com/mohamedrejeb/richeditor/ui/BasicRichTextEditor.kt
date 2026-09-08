@@ -32,6 +32,7 @@ import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import com.mohamedrejeb.richeditor.clipboard.ClipboardEventEffect
@@ -85,6 +86,9 @@ import kotlin.math.roundToInt
  * appearance / behavior of this TextField in different [Interaction]s.
  * @param cursorBrush [Brush] to paint cursor with. If [SolidColor] with [Color.Unspecified]
  * provided, there will be no cursor drawn
+ * @param imagePlaceholder Optional content shown in each image's character box, receiving its alt
+ * text. Supply an icon or emoji; null keeps the default replacement glyph. This does not change
+ * image data, selection offsets, or the read-only RichText renderer.
  * @param decorationBox Composable lambda that allows to add decorations around text field, such
  * as icon, placeholder, helper messages or similar, and automatically increase the hit target area
  * of the text field. To allow you to control the placement of the inner text field relative to your
@@ -110,6 +114,7 @@ public fun BasicRichTextEditor(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     cursorBrush: Brush = SolidColor(Color.Black),
     undoBehavior: UndoBehavior = UndoBehavior.Enabled,
+    imagePlaceholder: (@Composable (contentDescription: String?) -> Unit)? = null,
     decorationBox: @Composable (innerTextField: @Composable () -> Unit) -> Unit =
         @Composable { innerTextField -> innerTextField() }
 ) {
@@ -129,6 +134,7 @@ public fun BasicRichTextEditor(
         interactionSource = interactionSource,
         cursorBrush = cursorBrush,
         undoBehavior = undoBehavior,
+        imagePlaceholder = imagePlaceholder,
         decorationBox = decorationBox,
         contentPadding = PaddingValues()
     )
@@ -179,6 +185,9 @@ public fun BasicRichTextEditor(
  * appearance / behavior of this TextField in different [Interaction]s.
  * @param cursorBrush [Brush] to paint cursor with. If [SolidColor] with [Color.Unspecified]
  * provided, there will be no cursor drawn
+ * @param imagePlaceholder Optional content shown in each image's character box, receiving its alt
+ * text. Supply an icon or emoji; null keeps the default replacement glyph. This does not change
+ * image data, selection offsets, or the read-only RichText renderer.
  * @param decorationBox Composable lambda that allows to add decorations around text field, such
  * as icon, placeholder, helper messages or similar, and automatically increase the hit target area
  * of the text field. To allow you to control the placement of the inner text field relative to your
@@ -205,11 +214,16 @@ public fun BasicRichTextEditor(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     cursorBrush: Brush = SolidColor(Color.Black),
     undoBehavior: UndoBehavior = UndoBehavior.Enabled,
+    imagePlaceholder: (@Composable (contentDescription: String?) -> Unit)? = null,
     decorationBox: @Composable (innerTextField: @Composable () -> Unit) -> Unit =
         @Composable { innerTextField -> innerTextField() },
     contentPadding: PaddingValues
 ) {
     val density = LocalDensity.current
+    val imagePlaceholderTransformation = remember(state.visualTransformation, imagePlaceholder != null) {
+        if (imagePlaceholder == null) state.visualTransformation
+        else ImagePlaceholderVisualTransformation(state.visualTransformation)
+    }
     val layoutDirection = LocalLayoutDirection.current
     val clipboard = LocalClipboard.current
     val richClipboardManager = remember(state, clipboard) {
@@ -268,7 +282,12 @@ public fun BasicRichTextEditor(
             { innerTextField ->
                 decorationBox {
                     Layout(
-                        content = { innerTextField() },
+                        content = {
+                            innerTextField()
+                            if (imagePlaceholder != null) {
+                                ImagePlaceholders(state, { textOffsetY }, imagePlaceholder)
+                            }
+                        },
                         modifier = Modifier
                             .clipToBounds()
                             .drawRichSpanStyle(state, textOffsetY = { textOffsetY })
@@ -277,6 +296,9 @@ public fun BasicRichTextEditor(
                             }
                     ) { measurables, constraints ->
                         val placeable = measurables.first().measure(constraints)
+                        val placeholders = measurables.getOrNull(1)?.measure(
+                            Constraints.fixed(placeable.width, placeable.height),
+                        )
                         layout(placeable.width, placeable.height) {
                             placeable.place(0, 0)
                             // BasicTextField scrolls internally without exposing its offset.
@@ -290,6 +312,7 @@ public fun BasicRichTextEditor(
                             } else {
                                 0f
                             }
+                            placeholders?.place(0, 0)
                         }
                     }
                 }
@@ -363,10 +386,10 @@ public fun BasicRichTextEditor(
                 maxLines = maxLines,
                 minLines = minLines,
                 visualTransformation = if (enabled) {
-                    state.visualTransformation
+                    imagePlaceholderTransformation
                 } else {
                     DisabledTextVisualTransformation(
-                        delegate = state.visualTransformation,
+                        delegate = imagePlaceholderTransformation,
                         disabledAlpha = DisabledStateAlpha,
                     )
                 },
